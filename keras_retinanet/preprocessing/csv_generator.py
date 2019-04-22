@@ -70,7 +70,9 @@ def _read_annotations(csv_reader, classes):
         try:
             img_file, x1, y1, x2, y2, class_name = row[:6]
         except ValueError:
-            raise_from(ValueError('line {}: format should be \'img_file,x1,y1,x2,y2,class_name\' or \'img_file,,,,,\''.format(line)), None)
+            raise_from(ValueError(
+                'line {}: format should be \'img_file,x1,y1,x2,y2,class_name\' or \'img_file,,,,,\''.format(line)),
+                       None)
 
         if img_file not in result:
             result[img_file] = []
@@ -117,11 +119,11 @@ class CSVGenerator(Generator):
     """
 
     def __init__(
-        self,
-        csv_data_file,
-        csv_class_file,
-        base_dir=None,
-        **kwargs
+            self,
+            csv_data_file,
+            csv_class_file,
+            base_dir=None,
+            **kwargs
     ):
         """ Initialize a CSV data generator.
 
@@ -131,8 +133,9 @@ class CSVGenerator(Generator):
             base_dir: Directory w.r.t. where the files are to be searched (defaults to the directory containing the csv_data_file).
         """
         self.image_names = []
-        self.image_data  = {}
-        self.base_dir    = base_dir
+        self.image_data = {}
+        self.base_dir = base_dir
+        self.images = {}
 
         # Take base_dir from annotations file if not explicitly specified.
         if self.base_dir is None:
@@ -156,6 +159,9 @@ class CSVGenerator(Generator):
         except ValueError as e:
             raise_from(ValueError('invalid CSV annotations file: {}: {}'.format(csv_data_file, e)), None)
         self.image_names = list(self.image_data.keys())
+
+        # for name in self.image_names:
+        #     self.load_if_not_yet(name)
 
         super(CSVGenerator, self).__init__(**kwargs)
 
@@ -201,15 +207,21 @@ class CSVGenerator(Generator):
         image = Image.open(self.image_path(image_index))
         return float(image.width) / float(image.height)
 
+    def load_if_not_yet(self, image_path):
+        if image_path not in self.images:
+            self.images[image_path] = read_image_bgr(image_path)
+        return self.images[image_path]
+
     def load_image(self, image_index):
         """ Load an image at the image_index.
         """
         return read_image_bgr(self.image_path(image_index))
+        # return self.load_if_not_yet(self.image_path(image_index))
 
     def load_annotations(self, image_index):
         """ Load annotations for an image_index.
         """
-        path        = self.image_names[image_index]
+        path = self.image_names[image_index]
         annotations = {'labels': np.empty((0,)), 'bboxes': np.empty((0, 4))}
 
         for idx, annot in enumerate(self.image_data[path]):

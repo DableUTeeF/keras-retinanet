@@ -41,18 +41,18 @@ class Generator(keras.utils.Sequence):
     """
 
     def __init__(
-        self,
-        transform_generator = None,
-        batch_size=1,
-        group_method='ratio',  # one of 'none', 'random', 'ratio'
-        shuffle_groups=True,
-        image_min_side=800,
-        image_max_side=1333,
-        transform_parameters=None,
-        compute_anchor_targets=anchor_targets_bbox,
-        compute_shapes=guess_shapes,
-        preprocess_image=preprocess_image,
-        config=None
+            self,
+            transform_generator=None,
+            batch_size=1,
+            group_method='ratio',  # one of 'none', 'random', 'ratio'
+            shuffle_groups=True,
+            image_min_side=800,
+            image_max_side=1333,
+            transform_parameters=None,
+            compute_anchor_targets=anchor_targets_bbox,
+            compute_shapes=guess_shapes,
+            preprocess_image=preprocess_image,
+            config=None
     ):
         """ Initialize Generator object.
 
@@ -68,17 +68,17 @@ class Generator(keras.utils.Sequence):
             compute_shapes         : Function handler for computing the shapes of the pyramid for a given input.
             preprocess_image       : Function handler for preprocessing an image (scaling / normalizing) for passing through a network.
         """
-        self.transform_generator    = transform_generator
-        self.batch_size             = int(batch_size)
-        self.group_method           = group_method
-        self.shuffle_groups         = shuffle_groups
-        self.image_min_side         = image_min_side
-        self.image_max_side         = image_max_side
-        self.transform_parameters   = transform_parameters or TransformParameters()
+        self.transform_generator = transform_generator
+        self.batch_size = int(batch_size)
+        self.group_method = group_method
+        self.shuffle_groups = shuffle_groups
+        self.image_min_side = image_min_side
+        self.image_max_side = image_max_side
+        self.transform_parameters = transform_parameters or TransformParameters()
         self.compute_anchor_targets = compute_anchor_targets
-        self.compute_shapes         = compute_shapes
-        self.preprocess_image       = preprocess_image
-        self.config                 = config
+        self.compute_shapes = compute_shapes
+        self.preprocess_image = preprocess_image
+        self.config = config
 
         # Define groups
         self.group_images()
@@ -141,9 +141,13 @@ class Generator(keras.utils.Sequence):
         """
         annotations_group = [self.load_annotations(image_index) for image_index in group]
         for annotations in annotations_group:
-            assert(isinstance(annotations, dict)), '\'load_annotations\' should return a list of dictionaries, received: {}'.format(type(annotations))
-            assert('labels' in annotations), '\'load_annotations\' should return a list of dictionaries that contain \'labels\' and \'bboxes\'.'
-            assert('bboxes' in annotations), '\'load_annotations\' should return a list of dictionaries that contain \'labels\' and \'bboxes\'.'
+            assert (isinstance(annotations,
+                               dict)), '\'load_annotations\' should return a list of dictionaries, received: {}'.format(
+                type(annotations))
+            assert (
+                        'labels' in annotations), '\'load_annotations\' should return a list of dictionaries that contain \'labels\' and \'bboxes\'.'
+            assert (
+                        'bboxes' in annotations), '\'load_annotations\' should return a list of dictionaries that contain \'labels\' and \'bboxes\'.'
 
         return annotations_group
 
@@ -185,7 +189,8 @@ class Generator(keras.utils.Sequence):
         # randomly transform both image and annotations
         if transform is not None or self.transform_generator:
             if transform is None:
-                transform = adjust_transform_for_image(next(self.transform_generator), image, self.transform_parameters.relative_translation)
+                transform = adjust_transform_for_image(next(self.transform_generator), image,
+                                                       self.transform_parameters.relative_translation)
 
             # apply transformation to image
             image = apply_transform(transform, image, self.transform_parameters)
@@ -201,11 +206,12 @@ class Generator(keras.utils.Sequence):
         """ Randomly transforms each image and its annotations.
         """
 
-        assert(len(image_group) == len(annotations_group))
+        assert (len(image_group) == len(annotations_group))
 
         for index in range(len(image_group)):
             # transform a single group entry
-            image_group[index], annotations_group[index] = self.random_transform_group_entry(image_group[index], annotations_group[index])
+            image_group[index], annotations_group[index] = self.random_transform_group_entry(image_group[index],
+                                                                                             annotations_group[index])
 
         return image_group, annotations_group
 
@@ -234,11 +240,12 @@ class Generator(keras.utils.Sequence):
     def preprocess_group(self, image_group, annotations_group):
         """ Preprocess each image and its annotations in its group.
         """
-        assert(len(image_group) == len(annotations_group))
+        assert (len(image_group) == len(annotations_group))
 
         for index in range(len(image_group)):
             # preprocess a single group entry
-            image_group[index], annotations_group[index] = self.preprocess_group_entry(image_group[index], annotations_group[index])
+            image_group[index], annotations_group[index] = self.preprocess_group_entry(image_group[index],
+                                                                                       annotations_group[index])
 
         return image_group, annotations_group
 
@@ -253,7 +260,8 @@ class Generator(keras.utils.Sequence):
             order.sort(key=lambda x: self.image_aspect_ratio(x))
 
         # divide into groups, one group = one batch
-        self.groups = [[order[x % len(order)] for x in range(i, i + self.batch_size)] for i in range(0, len(order), self.batch_size)]
+        self.groups = [[order[x % len(order)] for x in range(i, i + self.batch_size)] for i in
+                       range(0, len(order), self.batch_size)]
 
     def compute_inputs(self, image_group):
         """ Compute inputs for the network using an image_group.
@@ -284,7 +292,7 @@ class Generator(keras.utils.Sequence):
         """
         # get the max image shape
         max_shape = tuple(max(image.shape[x] for image in image_group) for x in range(3))
-        anchors   = self.generate_anchors(max_shape)
+        anchors = self.generate_anchors(max_shape)
 
         batches = self.compute_anchor_targets(
             anchors,
@@ -299,7 +307,7 @@ class Generator(keras.utils.Sequence):
         """ Compute inputs and target outputs for the network.
         """
         # load images and annotations
-        image_group       = self.load_image_group(group)
+        image_group = self.load_image_group(group)
         annotations_group = self.load_annotations_group(group)
 
         # check validity of annotations

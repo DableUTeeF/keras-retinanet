@@ -23,15 +23,15 @@ class Evaluate(keras.callbacks.Callback):
     """
 
     def __init__(
-        self,
-        generator,
-        iou_threshold=0.5,
-        score_threshold=0.05,
-        max_detections=100,
-        save_path=None,
-        tensorboard=None,
-        weighted_average=False,
-        verbose=1
+            self,
+            generator,
+            iou_threshold=0.5,
+            score_threshold=0.05,
+            max_detections=100,
+            save_path=None,
+            tensorboard=None,
+            weighted_average=False,
+            verbose=1
     ):
         """ Evaluate a given dataset using a given model at the end of every epoch during training.
 
@@ -45,14 +45,14 @@ class Evaluate(keras.callbacks.Callback):
             weighted_average : Compute the mAP using the weighted average of precisions among classes.
             verbose          : Set the verbosity level, by default this is set to 1.
         """
-        self.generator       = generator
-        self.iou_threshold   = iou_threshold
+        self.generator = generator
+        self.iou_threshold = iou_threshold
         self.score_threshold = score_threshold
-        self.max_detections  = max_detections
-        self.save_path       = save_path
-        self.tensorboard     = tensorboard
+        self.max_detections = max_detections
+        self.save_path = save_path
+        self.tensorboard = tensorboard
         self.weighted_average = weighted_average
-        self.verbose         = verbose
+        self.verbose = verbose
 
         super(Evaluate, self).__init__()
 
@@ -72,7 +72,7 @@ class Evaluate(keras.callbacks.Callback):
         # compute per class average precision
         total_instances = []
         precisions = []
-        for label, (average_precision, num_annotations ) in average_precisions.items():
+        for label, (average_precision, num_annotations) in average_precisions.items():
             if self.verbose == 1:
                 print('{:.0f} instances of class'.format(num_annotations),
                       self.generator.label_to_name(label), 'with average precision: {:.4f}'.format(average_precision))

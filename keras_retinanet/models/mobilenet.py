@@ -18,7 +18,7 @@ import keras
 from keras.applications import mobilenet
 from keras.utils import get_file
 from ..utils.image import preprocess_image
-
+from .. import layers
 from . import retinanet
 from . import Backbone
 
@@ -40,8 +40,10 @@ class MobileNetBackbone(Backbone):
         imagenet shape dimension and 'alpha' controls the width of the network.
         For more info check the explanation from the keras mobilenet script itself.
         """
-
-        alpha = float(self.backbone.split('_')[1])
+        try:
+            alpha = float(self.backbone.split('_')[1])
+        except IndexError:
+            alpha = 1.0
         rows = int(self.backbone.split('_')[0].replace('mobilenet', ''))
 
         # load weights
@@ -89,7 +91,10 @@ def mobilenet_retinanet(num_classes, backbone='mobilenet224_1.0', inputs=None, m
     Returns
         RetinaNet model with a MobileNet backbone.
     """
-    alpha = float(backbone.split('_')[1])
+    try:
+        alpha = float(backbone.split('_')[1])
+    except IndexError:
+        alpha = 1.0
 
     # choose default input
     if inputs is None:
@@ -106,4 +111,45 @@ def mobilenet_retinanet(num_classes, backbone='mobilenet224_1.0', inputs=None, m
     if modifier:
         backbone = modifier(backbone)
 
-    return retinanet.retinanet(inputs=inputs, num_classes=num_classes, backbone_layers=backbone.outputs, **kwargs)
+    return retinanet.retinanet(inputs=inputs,
+                               num_classes=num_classes,
+                               create_pyramid_features=__create_pyramid_features,
+                               backbone_layers=backbone.outputs, **kwargs)
+
+
+def __create_pyramid_features(C3, C4, C5, feature_size=256):
+    """ Creates the FPN layers on top of the backbone features.
+
+    Args
+        C3           : Feature stage C3 from the backbone.
+        C4           : Feature stage C4 from the backbone.
+        C5           : Feature stage C5 from the backbone.
+        feature_size : The feature size to use for the resulting feature levels.
+
+    Returns
+        A list of feature levels [P3, P4, P5, P6, P7].
+    """
+    # upsample C5 to get P5 from the FPN paper
+    P5 = keras.layers.SeparableConv2D(feature_size, kernel_size=1, strides=1, padding='same', name='C5_reduced')(C5)
+    P5_upsampled = layers.UpsampleLike(name='P5_upsampled')([P5, C4])
+    P5 = keras.layers.SeparableConv2D(feature_size, kernel_size=3, strides=1, padding='same', name='P5')(P5)
+
+    # add P5 elementwise to C4
+    P4 = keras.layers.SeparableConv2D(feature_size, kernel_size=1, strides=1, padding='same', name='C4_reduced')(C4)
+    P4 = keras.layers.Add(name='P4_merged')([P5_upsampled, P4])
+    P4_upsampled = layers.UpsampleLike(name='P4_upsampled')([P4, C3])
+    P4 = keras.layers.SeparableConv2D(feature_size, kernel_size=3, strides=1, padding='same', name='P4')(P4)
+
+    # add P4 elementwise to C3
+    P3 = keras.layers.SeparableConv2D(feature_size, kernel_size=1, strides=1, padding='same', name='C3_reduced')(C3)
+    P3 = keras.layers.Add(name='P3_merged')([P4_upsampled, P3])
+    P3 = keras.layers.SeparableConv2D(feature_size, kernel_size=3, strides=1, padding='same', name='P3')(P3)
+
+    # "P6 is obtained via a 3x3 stride-2 conv on C5"
+    P6 = keras.layers.SeparableConv2D(feature_size, kernel_size=3, strides=2, padding='same', name='P6')(C5)
+
+    # "P7 is computed by applying ReLU followed by a 3x3 stride-2 conv on P6"
+    P7 = keras.layers.Activation('relu', name='C6_relu')(P6)
+    P7 = keras.layers.SeparableConv2D(feature_size, kernel_size=3, strides=2, padding='same', name='P7')(P7)
+
+    return [P3, P4, P5, P6, P7]

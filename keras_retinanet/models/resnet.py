@@ -22,6 +22,7 @@ import keras_resnet.models
 from . import retinanet
 from . import Backbone
 from ..utils.image import preprocess_image
+from classification_models.resnet import ResNet18, preprocess_input, ResNet34
 
 
 class ResNetBackbone(Backbone):
@@ -52,6 +53,14 @@ class ResNetBackbone(Backbone):
             checksum = '05dc86924389e5b401a9ea0348a3213c'
         elif depth == 152:
             checksum = '6ee11ef2b135592f8031058820bb9e71'
+        elif depth == 18:
+            checksum = '64da73012bb70e16c901316c201d9803'
+            filename = 'resnet18_imagenet_1000.h5'
+            resource = 'https://github.com/qubvel/classification_models/releases/download/0.0.1/resnet18_imagenet_1000.h5'
+        elif depth == 34:
+            checksum = '2ac8277412f65e5d047f255bcbd10383'
+            filename = 'resnet34_imagenet_1000.h5'
+            resource = 'https://github.com/qubvel/classification_models/releases/download/0.0.1/resnet34_imagenet_1000.h5'
 
         return get_file(
             filename,
@@ -63,7 +72,7 @@ class ResNetBackbone(Backbone):
     def validate(self):
         """ Checks whether the backbone string is correct.
         """
-        allowed_backbones = ['resnet50', 'resnet101', 'resnet152']
+        allowed_backbones = ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152']
         backbone = self.backbone.split('_')[0]
 
         if backbone not in allowed_backbones:
@@ -72,6 +81,8 @@ class ResNetBackbone(Backbone):
     def preprocess_image(self, inputs):
         """ Takes as input an image and prepares it for being passed through the network.
         """
+        # if self.backbone.split('_')[0] == 'resnet18':
+        #     return preprocess_input(inputs)
         return preprocess_image(inputs, mode='caffe')
 
 
@@ -101,6 +112,20 @@ def resnet_retinanet(num_classes, backbone='resnet50', inputs=None, modifier=Non
         resnet = keras_resnet.models.ResNet101(inputs, include_top=False, freeze_bn=True)
     elif backbone == 'resnet152':
         resnet = keras_resnet.models.ResNet152(inputs, include_top=False, freeze_bn=True)
+    elif backbone == 'resnet36':
+        resnet = ResNet34(None, input_tensor=inputs, weights=None, include_top=False)
+        layer_names = ['stage3_unit1_relu1', 'stage4_unit1_relu1', 'relu1']
+        layer_outputs = [resnet.get_layer(name).output for name in layer_names]
+        resnet = keras.models.Model(inputs=inputs, outputs=layer_outputs, name=resnet.name)
+        return retinanet.retinanet(inputs=inputs, num_classes=num_classes, backbone_layers=resnet.outputs, **kwargs)
+
+    elif backbone == 'resnet18':
+        resnet = ResNet18(None, input_tensor=inputs, weights=None, include_top=False)
+        layer_names = ['stage3_unit1_relu1', 'stage4_unit1_relu1', 'relu1']
+        layer_outputs = [resnet.get_layer(name).output for name in layer_names]
+        resnet = keras.models.Model(inputs=inputs, outputs=layer_outputs, name=resnet.name)
+        return retinanet.retinanet(inputs=inputs, num_classes=num_classes, backbone_layers=resnet.outputs, **kwargs)
+
     else:
         raise ValueError('Backbone (\'{}\') is invalid.'.format(backbone))
 
@@ -110,6 +135,14 @@ def resnet_retinanet(num_classes, backbone='resnet50', inputs=None, modifier=Non
 
     # create the full model
     return retinanet.retinanet(inputs=inputs, num_classes=num_classes, backbone_layers=resnet.outputs[1:], **kwargs)
+
+
+def resnet18_retinanet(num_classes, inputs=None, **kwargs):
+    return resnet_retinanet(num_classes=num_classes, backbone='resnet18', inputs=inputs, **kwargs)
+
+
+def resnet34_retinanet(num_classes, inputs=None, **kwargs):
+    return resnet_retinanet(num_classes=num_classes, backbone='resnet36', inputs=inputs, **kwargs)
 
 
 def resnet50_retinanet(num_classes, inputs=None, **kwargs):

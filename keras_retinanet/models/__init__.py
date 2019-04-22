@@ -5,20 +5,21 @@ import sys
 class Backbone(object):
     """ This class stores additional information on backbones.
     """
+
     def __init__(self, backbone):
         # a dictionary mapping custom layer names to the correct classes
         from .. import layers
         from .. import losses
         from .. import initializers
         self.custom_objects = {
-            'UpsampleLike'     : layers.UpsampleLike,
-            'PriorProbability' : initializers.PriorProbability,
-            'RegressBoxes'     : layers.RegressBoxes,
-            'FilterDetections' : layers.FilterDetections,
-            'Anchors'          : layers.Anchors,
-            'ClipBoxes'        : layers.ClipBoxes,
-            '_smooth_l1'       : losses.smooth_l1(),
-            '_focal'           : losses.focal(),
+            'UpsampleLike': layers.UpsampleLike,
+            'PriorProbability': initializers.PriorProbability,
+            'RegressBoxes': layers.RegressBoxes,
+            'FilterDetections': layers.FilterDetections,
+            'Anchors': layers.Anchors,
+            'ClipBoxes': layers.ClipBoxes,
+            '_smooth_l1': losses.smooth_l1(),
+            '_focal': losses.focal(),
         }
 
         self.backbone = backbone
@@ -53,6 +54,8 @@ def backbone(backbone_name):
         from .resnet import ResNetBackbone as b
     elif 'mobilenet' in backbone_name:
         from .mobilenet import MobileNetBackbone as b
+    elif 'mobilenetv2' in backbone_name or 'mobilenetV2' in backbone_name or 'mobilenet_v2' in backbone_name:
+        from .mobilenetv2 import MobileNetV2Backbone as b
     elif 'vgg' in backbone_name:
         from .vgg import VGGBackbone as b
     elif 'densenet' in backbone_name:
@@ -100,14 +103,16 @@ def convert_model(model, nms=True, class_specific_filter=True, anchor_params=Non
         ValueError: In case of an invalid savefile.
     """
     from .retinanet import retinanet_bbox
-    return retinanet_bbox(model=model, nms=nms, class_specific_filter=class_specific_filter, anchor_params=anchor_params)
+    return retinanet_bbox(model=model, nms=nms, class_specific_filter=class_specific_filter,
+                          anchor_params=anchor_params)
 
 
 def assert_training_model(model):
     """ Assert that the model is a training model.
     """
-    assert(all(output in model.output_names for output in ['regression', 'classification'])), \
-        "Input is not a training model (no 'regression' and 'classification' outputs were found, outputs are: {}).".format(model.output_names)
+    assert (all(output in model.output_names for output in ['regression', 'classification'])), \
+        "Input is not a training model (no 'regression' and 'classification' outputs were found, outputs are: {}).".format(
+            model.output_names)
 
 
 def check_training_model(model):
